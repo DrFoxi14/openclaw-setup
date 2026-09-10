@@ -1,0 +1,24 @@
+# Secrets & credentials
+*.env
+.env*
+*token*
+*credentials*
+*.pem
+*.key
+openclaw.json
+openclaw.json.bak*
+config/*.local.json
+
+# Memory / personal data
+memory/
+*.memory.json
+MEMORY.md
+USER.md
+DREAMS.md
+
+# OS junk
+.DS_Store
+
+# Logs
+*.log
+logs/

@@ -1,0 +1,219 @@
+{
+  "agents": {
+    "defaults": {
+      "workspace": "/Users/YOUR_USERNAME/.openclaw/workspace",
+      "model": {
+        "primary": "ollama/ornith-1.5:35b-262k",
+        "fallbacks": [
+          "ollama/ornith-1.5:9b"
+        ]
+      },
+      "models": {
+        "ollama/ornith-1.5:9b": {},
+        "ollama/ornith-1.5:35b-262k": {},
+        "ollama/ornith-1.5:35b-262k-ctx24k": {}
+      },
+      "memorySearch": {
+        "provider": "ollama",
+        "model": "nomic-embed-text"
+      },
+      "compaction": {
+        "mode": "safeguard",
+        "keepRecentTokens": 150000,
+        "memoryFlush": {
+          "enabled": true
+        },
+        "reserveTokensFloor": 30000
+      },
+      "contextPruning": {
+        "mode": "cache-ttl",
+        "ttl": "10m"
+      },
+      "contextTokens": 262144,
+      "sandbox": {
+        "mode": "off"
+      }
+    }
+  },
+  "gateway": {
+    "mode": "local",
+    "auth": {
+      "mode": "token",
+      "token": "YOUR_GATEWAY_TOKEN_HERE"
+    },
+    "port": 18789,
+    "bind": "loopback",
+    "tailscale": {
+      "mode": "off",
+      "resetOnExit": false
+    },
+    "controlUi": {
+      "allowInsecureAuth": false
+    },
+    "nodes": {
+      "denyCommands": [
+        "camera.snap",
+        "camera.clip",
+        "screen.record",
+        "contacts.add",
+        "calendar.add",
+        "reminders.add",
+        "sms.send",
+        "sms.search"
+      ]
+    }
+  },
+  "session": {
+    "dmScope": "per-channel-peer"
+  },
+  "tools": {
+    "profile": "full",
+    "alsoAllow": [
+      "exec",
+      "file-transfer"
+    ],
+    "media": {
+      "audio": {
+        "enabled": true
+      }
+    }
+  },
+  "plugins": {
+    "entries": {
+      "ollama": {
+        "enabled": true
+      },
+      "telegram": {
+        "enabled": true
+      },
+      "memory-core": {
+        "config": {
+          "dreaming": {
+            "enabled": true,
+            "frequency": "0 3 * * *",
+            "timezone": "Europe/Bucharest",
+            "verboseLogging": false
+          }
+        },
+        "enabled": true
+      },
+      "microsoft": {
+        "enabled": true
+      }
+    }
+  },
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "ollama": {
+        "baseUrl": "http://127.0.0.1:11434",
+        "api": "ollama",
+        "apiKey": "OLLAMA_API_KEY",
+        "models": [
+          {
+            "id": "ornith-1.5:35b-262k",
+            "name": "ornith-1.5:35b-262k",
+            "reasoning": true,
+            "input": [
+              "text",
+              "image"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 262144,
+            "maxTokens": 8192,
+            "compat": {
+              "supportsUsageInStreaming": true,
+              "supportsTools": true
+            },
+            "api": "ollama",
+            "params": {
+              "num_ctx": 262144
+            }
+          },
+          {
+            "id": "ornith-1.5:9b",
+            "name": "ornith-1.5:9b",
+            "reasoning": true,
+            "input": [
+              "text",
+              "image"
+            ],
+            "cost": {
+              "input": 0,
+              "output": 0,
+              "cacheRead": 0,
+              "cacheWrite": 0
+            },
+            "contextWindow": 262144,
+            "maxTokens": 8192,
+            "compat": {
+              "supportsUsageInStreaming": true,
+              "supportsTools": true
+            },
+            "api": "ollama",
+            "params": {
+              "num_ctx": 262144
+            }
+          }
+        ]
+      }
+    }
+  },
+  "auth": {
+    "profiles": {
+      "ollama:default": {
+        "provider": "ollama",
+        "mode": "api_key"
+      }
+    }
+  },
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "groups": {
+        "*": {
+          "requireMention": true
+        }
+      },
+      "botToken": "YOUR_TELEGRAM_BOT_TOKEN_HERE",
+      "dmPolicy": "allowlist",
+      "allowFrom": [
+        "YOUR_TELEGRAM_USER_ID_HERE"
+      ],
+      "streaming": {
+        "mode": "progress",
+        "preview": {
+          "toolProgress": true
+        }
+      },
+      "groupAllowFrom": [
+        "YOUR_TELEGRAM_USER_ID_HERE"
+      ]
+    }
+  },
+  "env": {
+    "DRAWTHINGS_URL": "http://127.0.0.1:7860",
+    "NGROK_AUTHTOKEN": "YOUR_NGROK_TOKEN_HERE"
+  },
+  "messages": {
+    "tts": {
+      "auto": "inbound",
+      "provider": "microsoft"
+    }
+  },
+  "skills": {
+    "entries": {
+      "github": {
+        "enabled": false
+      },
+      "coding-agent": {
+        "enabled": false
+      }
+    }
+  }
+}
