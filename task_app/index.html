@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Task Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="app-header">
+      <h1>📝 Task Tracker</h1>
+      <p class="subtitle">Organize your tasks, simply and quickly.</p>
+    </header>
+
+    <section aria-label="Add task" class="card form-card">
+      <form id="taskForm" novalidate>
+        <input
+          type="text"
+          id="taskInput"
+          class="task-input"
+          placeholder="What do you need to do?"
+          autocomplete="off"
+          aria-label="New task"
+        />
+        <button type="submit" class="btn-add">Add ➕</button>
+      </form>
+      <p id="error-msg" class="error" hidden></p>
+    </section>
+
+    <section class="controls card">
+      <div class="search-wrapper">
+        <input type="search" id="searchInput" class="search-input" placeholder="Search tasks..." aria-label="Search" />
+      </div>
+      <div class="filters" role="tablist">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="active">Active</button>
+        <button class="filter-btn" data-filter="completed">Completed</button>
+      </div>
+    </section>
+
+    <ul id="taskList" aria-label="Task list"></ul>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+/* ---------- Design tokens ---------- */
+:root {
+  --bg-color: #f4f6fa;
+  --text-color: #1e293b;
+  --muted-color: #64748b;
+  --card-color: #ffffff;
+  --primary-color: #4f46e5;
+  --accent-color: #0ea5e9;
+  --error-color: #dc2626;
+  --success-color: #16a34a;
+  --border-radius: 16px;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.09);
+}
+
+[data-theme="dark"] {
+  --bg-color: #101421;
+  --text-color: #e5e7eb;
+  --muted-color: #9aa4bf;
+  --card-color: #1b2136;
+  --primary-color: #818cf8;
+  --accent-color: #38bdf8;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg-color);
+  color: var(--text-color);
+  transition: background 0.3s ease, color 0.3s ease;
+  min-height: 100vh;
+  padding: 24px 16px;
+}
+
+.app { max-width: 640px; margin: 0 auto; }
+
+/* ---------- Header ---------- */
+.app-header { text-align: center; margin-bottom: 28px; }
+.app-header h1 { font-size: 2.4rem; }
+.subtitle { color: var(--muted-color); margin-top: 6px; }
+
+.card {
+  background: var(--card-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+/* ---------- Form ---------- */
+.form-card form { display: flex; gap: 12px; }
+.task-input, .search-input {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--muted-color);
+  font-size: 1rem;
+}
+.btn-add {
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  color: #fff;
+  border: none;
+  padding: 0 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.error {
+  color: var(--error-color);
+  margin-top: 10px;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* ---------- Controls / filters ---------- */
+.controls { display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+.search-wrapper { flex: 1; min-width: 240px; }
+.filters { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+.filter-btn, .task-item-actions button {
+  border: none;
+  background: transparent;
+  color: var(--muted-color);
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+#searchInput { margin-bottom: 20px; }
+
+/* ---------- Filter buttons / active state ---------- */
+.filter-btn[data-filter="all"] + .filter-btn,
+.filter-btn.active:not([data-filter="all"]) { color: #fff; font-weight: 600; }
+.filter-btn.active { background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); }
+
+.task-item.completed .task-text { text-decoration: line-through; opacity: 0.7; }
