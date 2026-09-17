@@ -95,3 +95,14 @@ Not mandatory after every artifact, but avoids leaving dozens of local servers r
 - No raw code dumped into chat when a saved artifact already exists for it.
 - No public tunnels (ngrok, cloudflared, etc.) for local artifacts — ever.
 - No claiming a script "works" without having actually run it and seen exit code 0.
+
+## Self-modification of openclaw.json (2026-09-17)
+
+Tested asking the agent to fix its own default model in
+`~/.openclaw/openclaw.json` directly, rather than editing it manually.
+It worked correctly this time (`agents.defaults.model` updated to
+`ollama/ornith-1.5:35b-262k` as intended). Flagging as a pattern to
+watch, not a rule yet: self-editing the gateway's own config file is a
+different risk class than normal task execution — worth confirming the
+diff before letting it write again, and something to explicitly test
+under the fallback/failover scenario later.
