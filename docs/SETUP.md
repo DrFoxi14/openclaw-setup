@@ -182,3 +182,47 @@ openclaw memory status --index --agent main
 
 Confirmed: `Provider: ollama`, `Embeddings: ready`, `Vector store: indexed`,
 `Dirty: no`. Fully local, zero API cost, dreaming scheduled correctly.
+
+## Migrating secrets out of plaintext (2026-09-17)
+
+`openclaw doctor` flagged two plaintext secrets in `openclaw.json`:
+`gateway.auth.token` and `models.providers.ollama.apiKey`.
+
+### Process (learned by reading `--help` at each step, not guessing)
+
+```bash
+# 1. Store the value (kind=secret is write-only, never revealed later)
+echo -n "<value>" > /tmp/secret.txt
+openclaw secrets store set SOME_NAME --kind secret --value-file /tmp/secret.txt
+rm /tmp/secret.txt
+
+# 2. Manually replace the plaintext value in openclaw.json with a reference:
+#    "token": { "source": "store", "provider": "default", "id": "SOME_NAME" }
+
+# 3. Validate, restart, reload, verify
+openclaw config validate
+openclaw gateway restart
+openclaw secrets reload
+openclaw secrets audit --check
+```
+
+Note: `openclaw secrets configure` (the interactive wizard) expects the
+store entry to already exist — running it before `secrets store set`
+fails with "Secret store entry ... was not found." Store first, then
+either use the wizard or edit the JSON reference directly (faster once
+you know the reference shape).
+
+Store IDs must match `/^[A-Z][A-Z0-9_]{0,127}$/` — uppercase letters,
+digits, underscore only (no hyphens).
+
+### Result
+
+```bash
+openclaw secrets audit --check
+# Secrets audit: clean. plaintext=0, unresolved=0, shadowed=0, storeResidue=0, legacy=0.
+```
+
+Both `gateway.auth.token` and `models.providers.ollama.apiKey` are now
+SecretRefs backed by the local SQLite secret store (`kind: secret`,
+write-only — never exposed via list/get, only resolved internally at
+runtime).
