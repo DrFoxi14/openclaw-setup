@@ -106,3 +106,79 @@ not required for this initial setup pass.
 - Workspace: `~/.openclaw/workspace`
 - Sessions: `~/.openclaw/agents/main/sessions`
 - Logs: `~/Library/Logs/openclaw/gateway.log`
+
+## Memory-core configuration (2026-09-17)
+
+### What went wrong first, and why
+
+Initial attempt used `plugins.entries.memory-core.config.dreaming.mode: "core"`,
+based on official multi-language documentation. This was rejected by the
+locally installed schema (`additionalProperties: false` on `dreaming`, no
+`mode` field). Extracted the real schema directly from the running install
+with `openclaw config schema --json`, which confirmed the actual valid
+shape matches the original architecture from `context-memory-architecture.md`:
+`enabled`, `frequency` (cron expression), `timezone`, `verboseLogging`, plus
+granular `phases.{light,deep,rem}` overrides. Lesson: for a fast-moving
+project, trust the locally installed schema over general documentation,
+which can lag behind or vary by version.
+
+### Final working config
+
+```json
+"plugins": {
+  "entries": {
+    "memory-core": {
+      "enabled": true,
+      "config": {
+        "dreaming": {
+          "enabled": true,
+          "frequency": "0 3 * * *",
+          "timezone": "Europe/Bucharest",
+          "verboseLogging": false
+        }
+      }
+    }
+  }
+},
+"memory": {
+  "search": {
+    "provider": "ollama",
+    "model": "qwen3-embedding:0.6b",
+    "remote": {
+      "baseUrl": "http://127.0.0.1:11434"
+    }
+  }
+}
+```
+
+### Critical catch: default embedding provider was OpenAI, not Ollama
+
+`openclaw memory status --agent main` initially showed
+`Provider: openai, Model: text-embedding-3-small` — memory search defaults
+to a cloud provider and does NOT auto-detect Ollama, even when every other
+part of the config (chat model, `dreaming`) is fully local. This directly
+contradicts the project's zero-API-cost, privacy-first design and would
+have silently sent data to OpenAI (and incurred cost) on every memory
+search or reindex. Caught before any reindex ran — corrected to
+`provider: "ollama"` with `qwen3-embedding:0.6b` (the model this project
+already calibrated as the better fit for Romanian-language text — see
+`tools/compare_embed_models.py`).
+
+**Lesson for the rebuild**: never assume a plugin's default matches the
+project's local-only stance — verify with `memory status` (or equivalent)
+before considering a subsystem "done."
+
+### Config path also changed vs. older docs
+
+`openclaw doctor --fix` auto-migrated `agents.defaults.memorySearch` →
+`memory.search` — the older key is deprecated in this version. Doctor
+handled this migration correctly and non-destructively.
+
+### Verification
+
+```bash
+openclaw memory status --index --agent main
+```
+
+Confirmed: `Provider: ollama`, `Embeddings: ready`, `Vector store: indexed`,
+`Dirty: no`. Fully local, zero API cost, dreaming scheduled correctly.
