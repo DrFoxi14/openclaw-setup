@@ -61,3 +61,48 @@ Choices made during onboarding, and why:
 | Personal-by-default / multi-user disclaimer | **Yes** | This is a single-operator personal agent — no shared inbox, no multi-user lock-down needed |
 | Help make OpenClaw better? (telemetry) | **No thanks** | Consistent with this project's privacy stance (see main README) — no data leaves the machine beyond what's strictly required |
 | Agent name | **main** | Kept generic/default rather than a custom name, to keep this a clean reference install |
+
+### Model provider setup
+
+| Prompt | Choice | Reason |
+|---|---|---|
+| How should I set things up? | **Ask first** (not Full access) | Avoid automatic scanning/use of any pre-existing API keys on the machine |
+| May I look around to find your AI access? | Yes, take a look | Safe at this point — "Ask first" was already selected, so this only *shows* detected options, doesn't activate them |
+| Model/auth provider | **Ollama** (via "More…" — not shown in the top-level list) | Only fully local, zero-cost option; matches `config/openclaw.example.json` |
+| Ollama mode | **Local only** (auto-selected) | Explicitly avoids Ollama's cloud tier |
+| Ollama base URL | `http://127.0.0.1:11434` (default, unchanged) | Confirmed reachable earlier via `curl` |
+
+> **Note**: onboarding auto-verified inference against `qwen2.5-coder:3b`
+> (whatever was available), not the intended primary model. Corrected
+> manually afterward in the dashboard — see next section — to
+> `ornith-1.5:35b-262k` as primary, `ornith-1.5:9b` as fallback.
+
+### Fallback behavior — how it actually works (researched, not assumed)
+
+Contrary to an initial assumption, fallback models are **not** loaded
+simultaneously with the primary — OpenClaw only invokes a fallback when
+the primary request actually fails, in this order:
+1. Auth-profile rotation within the current provider
+2. Model fallback to the next entry in `agents.defaults.model.fallbacks`
+
+Ollama itself also loads/unloads models on demand rather than keeping
+everything resident, which further reduces (but doesn't eliminate) the
+RAM-overlap risk between `ornith-1.5:35b-262k` (primary) and the two
+local fallbacks (`ornith-1.5:9b`, `muse-glimmer:30b-mlx`).
+
+**Known related issue (OpenClaw #28927, older versions)**: local Ollama
+fallbacks can sometimes hit a false "No API key found for provider
+ollama" error during failover, even though the provider is local and
+needs no auth. Not yet tested against this install — flagged to verify
+before relying on fallback in production.
+
+Fallback testing itself was deliberately deferred to a later session —
+not required for this initial setup pass.
+
+### Result
+
+- Gateway running at `ws://127.0.0.1:18789`
+- LaunchAgent installed: `~/Library/LaunchAgents/ai.openclaw.gateway.plist` (auto-starts on login)
+- Workspace: `~/.openclaw/workspace`
+- Sessions: `~/.openclaw/agents/main/sessions`
+- Logs: `~/Library/Logs/openclaw/gateway.log`
