@@ -13,10 +13,15 @@
         "ollama/ornith-1.5:35b-262k": {},
         "ollama/ornith-1.5:35b-262k-ctx24k": {}
       },
-      "memorySearch": {
-        "provider": "ollama",
-        "model": "nomic-embed-text"
-      },
+        "memory": {
+    "search": {
+      "provider": "ollama",
+      "model": "qwen3-embedding:0.6b",
+      "remote": {
+        "baseUrl": "http://127.0.0.1:11434"
+      }
+    }
+  },
       "compaction": {
         "mode": "safeguard",
         "keepRecentTokens": 150000,
@@ -37,9 +42,13 @@
   },
   "gateway": {
     "mode": "local",
-    "auth": {
+        "auth": {
       "mode": "token",
-      "token": "YOUR_GATEWAY_TOKEN_HERE"
+      "token": {
+        "source": "store",
+        "provider": "default",
+        "id": "GATEWAY_TOKEN"
+      }
     },
     "port": 18789,
     "bind": "loopback",
@@ -108,7 +117,11 @@
       "ollama": {
         "baseUrl": "http://127.0.0.1:11434",
         "api": "ollama",
-        "apiKey": "OLLAMA_API_KEY",
+                "apiKey": {
+          "source": "store",
+          "provider": "default",
+          "id": "OLLAMA_API_KEY"
+        },
         "models": [
           {
             "id": "ornith-1.5:35b-262k",
