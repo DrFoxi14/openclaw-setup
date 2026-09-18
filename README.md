@@ -1,5 +1,7 @@
 # OpenClaw Setup
 
+[![tests](https://github.com/DrFoxi14/openclaw-setup/actions/workflows/tests.yml/badge.svg)](https://github.com/DrFoxi14/openclaw-setup/actions/workflows/tests.yml)
+
 > Personal AI agent gateway running on a local LLM (Ornith/Qwen), controlled via Telegram, with tool access to Gmail/Calendar/Drive/Docs (via `gog`), a browser-control layer, and a persistent memory system.
 
 ## Why this exists
