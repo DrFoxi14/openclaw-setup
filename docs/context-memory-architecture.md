@@ -94,7 +94,7 @@ once you see false positives/negatives in practice.
 
 ---
 
-## 2. Incremental flush (the "notează trecutul" part)
+## 2. Incremental flush — writing the past down as it happens
 
 Triggered by the detector above — NOT by /new, NOT only at 3 AM.
 
