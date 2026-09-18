@@ -246,7 +246,7 @@ pip install pytest
 Run the suite:
 
 ```bash
-PYTHONPATH=src python3 -m pytest src/ -q
+PYTHONPATH=src python3 -m pytest src/ tools/ -q
 ```
 
 `PYTHONPATH=src` is required: the tests import `memory_flush` and
@@ -258,4 +258,5 @@ PYTHONPATH=src python3 -m pytest src/ -q
 > missing-module error rather than "you forgot to activate." If the
 > prompt doesn't show `(.venv)`, the tests are not running.
 
-Expected: 43 passed (9 cache, 21 memory flush, 13 topic reset trigger).
+Expected: 82 passed (9 cache, 21 memory flush, 13 topic reset trigger,
+39 artifact manager).

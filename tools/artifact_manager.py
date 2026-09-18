@@ -108,10 +108,12 @@ def run_git(args, cwd, allow_empty_fail=False):
 
 
 def ext_name(ext):
-    e = str(ext or "").lower()
+    e = str(ext or "").strip().lower()
+    if e == "htm":
+        e = "html"  # normalize so LANG_TO_MAIN resolves it to index.html
     known_exts = {"py", "html", "js", "css", "json", "txt", "md", "svg",
                   "png", "jpg", "jpeg", "gif"}
-    return e if e[:3] == "htm" or e in known_exts else "txt"
+    return e if e in known_exts else "txt"
 
 
 def to_extname(lang, file=None):
