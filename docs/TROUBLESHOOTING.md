@@ -42,8 +42,49 @@ This isn't a list of every bug — it's the incidents that actually shaped desig
 
 **Lesson carried into the rebuild**: never trust an agent's own "it's fixed now" — verify with an independent, read-only check. And request the minimum OAuth scope needed from the start, not the CLI's default.
 
-## Pattern across all three incidents
+## Incident 4: A successful `cp` that copied the wrong code (2026-09-18)
+
+**Symptom**: after copying two updated modules into `src/` and running the
+suite, 18 tests errored with `module 'topic_reset_trigger' has no attribute
+'clear_anchor_cache'` and a concurrency test that had passed minutes earlier
+reported 19 of 20 segments missing from the index. Nothing in the copy step
+had reported an error.
+
+**Root cause**: the browser does not overwrite an existing file in
+`~/Downloads` — it saves the new one under a suffixed name. Earlier versions
+of `memory_flush.py` and `topic_reset_trigger.py` from a previous session
+were already sitting there, so the current downloads landed as
+`memory_flush-3.py` and `topic_reset_trigger-3.py`. `cp ~/Downloads/memory_flush.py
+src/` therefore copied a four-day-old file over working code — including
+reverting a committed lock fix — and exited 0.
+
+**Fix**: copy from the actual filename (`ls -lt ~/Downloads` sorts by time,
+newest first), and delete stale copies afterward. The repo is the source of
+truth; anything in `~/Downloads` is a dead copy from the moment it was
+imported.
+
+**What actually caught it**: the test suite, within seconds. The reverted
+lock produced no error, no warning, and no visible difference in the file —
+only `test_concurrent_flush_keeps_every_index_entry` failing again with the
+same 19/20 figure it had reported before the fix existed. Without that test
+the regression would have shipped silently, and the failure it guards against
+(a segment on disk but absent from the index) is invisible until someone
+searches for something that should be there and isn't.
+
+**Verification habit adopted**: after copying any file into the repo, confirm
+a marker from the expected version rather than trusting the exit code —
+`grep -c "_INDEX_LOCK" src/memory_flush.py` returning 0 means the wrong file
+was copied, whatever `cp` reported.
+
+## Pattern across all four incidents
 
 All three trace back to the same underlying issue: **background/internal processes (dreaming, heartbeat, tool-error recovery) didn't have a clear boundary between "internal reasoning" and "output the user sees."** When something went wrong internally, the fix wasn't to reason more visibly — it was to reason less visibly and report status more explicitly.
+
+Incident 4 is a different class: not a background process leaking output,
+but a command that reported success while doing something other than what
+was intended. The defense is the same shape though — don't trust the
+report, verify the state independently. That was already the lesson written
+down after Incident 3 (`gog` reporting itself reconnected when it wasn't);
+Incident 4 is the same lesson arriving through a different door.
 
 This is the single biggest design principle carried into the rebuild: every background process gets `verboseLogging: false` by default, and any status it needs to report to me goes through a short, explicit message — not raw reasoning.
