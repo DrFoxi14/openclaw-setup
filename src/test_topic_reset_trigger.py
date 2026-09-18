@@ -31,6 +31,13 @@ def fake_embed(text, model=None, timeout=None):
         raise EmbeddingError("simulated failure")
     return FAR_VEC
 
+@pytest.fixture(autouse=True)
+def clear_anchor_cache_between_tests():
+    """Anchor vectors are cached for the life of the process. Tests swap in
+    different fake embedding spaces, so each one must start cold."""
+    trigger_module.clear_anchor_cache()
+    yield
+    trigger_module.clear_anchor_cache()
 
 # ---------------------------------------------------------------------------
 # is_explicit_reset_trigger
@@ -144,3 +151,66 @@ def test_default_threshold_is_the_calibrated_value():
     # false positives on the Romanian calibration set) — catches an
     # accidental revert to the uncalibrated 0.7 guess.
     assert trigger_module.RESET_TRIGGER_THRESHOLD == pytest.approx(0.80)
+
+
+# ---------------------------------------------------------------------------
+# Anchor caching — the hot-path cost this layer promises to avoid
+
+# ---------------------------------------------------------------------------
+
+@patch("topic_reset_trigger.embed", side_effect=fake_embed)
+def test_anchor_is_embedded_once_across_many_messages(mock_embed):
+    """Layer A is documented as the millisecond path. Re-embedding every
+    anchor on every message meant one Ollama round-trip per anchor per
+    message; anchors are fixed, so they are embedded once and reused."""
+    for i in range(10):
+        is_explicit_reset_trigger(f"mesaj departe {i}", anchors=TEST_ANCHORS, threshold=0.8)
+
+    embedded = [call.args[0] for call in mock_embed.call_args_list]
+    for anchor in TEST_ANCHORS:
+        assert embedded.count(anchor) == 1, f"{anchor!r} re-embedded {embedded.count(anchor)} times"
+
+
+@patch("topic_reset_trigger.embed", side_effect=fake_embed)
+def test_message_is_still_embedded_every_call(mock_embed):
+    """Only anchors are cached — each incoming message is distinct and must
+    be embedded fresh, or the detector would answer from stale input."""
+    is_explicit_reset_trigger("mesaj departe", anchors=TEST_ANCHORS)
+    is_explicit_reset_trigger("mesaj departe", anchors=TEST_ANCHORS)
+
+    embedded = [call.args[0] for call in mock_embed.call_args_list]
+    assert embedded.count("mesaj departe") == 2
+
+
+@patch("topic_reset_trigger.embed", side_effect=fake_embed)
+def test_failed_anchor_is_retried_not_cached_as_broken(mock_embed):
+    """A transient embedding outage must not permanently disable an anchor
+    for the lifetime of the process — failures are never cached."""
+    anchors = ["explodeaza", "ancora unu"]
+    is_explicit_reset_trigger("mesaj apropiat", anchors=anchors, threshold=0.8)
+    is_explicit_reset_trigger("mesaj apropiat", anchors=anchors, threshold=0.8)
+
+    embedded = [call.args[0] for call in mock_embed.call_args_list]
+    assert embedded.count("explodeaza") == 2   # retried
+    assert embedded.count("ancora unu") == 1   # cached after its one success
+
+
+@patch("topic_reset_trigger.embed", side_effect=fake_embed)
+def test_cache_is_keyed_by_model(mock_embed):
+    """Two embedding models produce different vector spaces; a vector cached
+    under one must never be served for the other."""
+    is_explicit_reset_trigger("mesaj departe", anchors=["ancora unu"], model="model-a")
+    is_explicit_reset_trigger("mesaj departe", anchors=["ancora unu"], model="model-b")
+
+    embedded = [call.args[0] for call in mock_embed.call_args_list]
+    assert embedded.count("ancora unu") == 2
+
+
+@patch("topic_reset_trigger.embed", side_effect=fake_embed)
+def test_clear_anchor_cache_forces_re_embedding(mock_embed):
+    is_explicit_reset_trigger("mesaj departe", anchors=TEST_ANCHORS)
+    trigger_module.clear_anchor_cache()
+    is_explicit_reset_trigger("mesaj departe", anchors=TEST_ANCHORS)
+
+    embedded = [call.args[0] for call in mock_embed.call_args_list]
+    assert embedded.count(TEST_ANCHORS[0]) == 2

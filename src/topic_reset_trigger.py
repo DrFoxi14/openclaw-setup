@@ -109,6 +109,51 @@ DEFAULT_ANCHOR_PHRASES = [
 
 
 # ---------------------------------------------------------------------------
+# Anchor embedding cache
+# ---------------------------------------------------------------------------
+
+# The anchor set is fixed, so embedding it on every incoming message meant one
+# Ollama round-trip per anchor per message (13 HTTP calls for a 12-phrase set)
+# on the hot path — which contradicted this layer's whole premise of being the
+# millisecond, no-model-call path. Anchors are embedded once per (model,
+# phrase) and reused for the life of the process; only the message itself is
+# embedded per call.
+#
+# Failures are deliberately NOT cached: an anchor that failed because Ollama
+# was briefly down must be retried on the next message, not written off for
+# the lifetime of the process.
+_ANCHOR_CACHE: dict[tuple[str, str], list[float]] = {}
+
+
+def clear_anchor_cache() -> None:
+    """Drop every cached anchor vector.
+
+    Needed when the anchor set or the embedding model changes at runtime, and
+    by tests, which swap in different fake embedding spaces and must not
+    inherit vectors cached by an earlier test.
+    """
+    _ANCHOR_CACHE.clear()
+
+
+def _anchor_vector(phrase: str, model: str) -> Optional[list[float]]:
+    """Embed an anchor phrase, reusing a cached vector when there is one.
+
+    Returns None instead of raising when the embedding call fails, so callers
+    keep their existing fail-safe behaviour of skipping that anchor.
+    """
+    key = (model, phrase)
+    cached = _ANCHOR_CACHE.get(key)
+    if cached is not None:
+        return cached
+    try:
+        vector = embed(phrase, model=model)
+    except EmbeddingError:
+        return None
+    _ANCHOR_CACHE[key] = vector
+    return vector
+
+
+# ---------------------------------------------------------------------------
 # Core detector
 # ---------------------------------------------------------------------------
 
@@ -137,9 +182,8 @@ def is_explicit_reset_trigger(
         return False
 
     for phrase in anchor_list:
-        try:
-            anchor_vec = embed(phrase, model=model)
-        except EmbeddingError:
+        anchor_vec = _anchor_vector(phrase, model)
+        if anchor_vec is None:
             continue
         if _cosine_similarity(msg_vec, anchor_vec) >= threshold:
             return True
@@ -171,9 +215,8 @@ def best_match(
     best_phrase = None
     best_score = 0.0
     for phrase in anchor_list:
-        try:
-            anchor_vec = embed(phrase, model=model)
-        except EmbeddingError:
+        anchor_vec = _anchor_vector(phrase, model)
+        if anchor_vec is None:
             continue
         sim = _cosine_similarity(msg_vec, anchor_vec)
         if sim > best_score:
@@ -181,3 +224,4 @@ def best_match(
             best_phrase = phrase
 
     return best_phrase, best_score
+

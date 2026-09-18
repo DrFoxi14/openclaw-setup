@@ -77,13 +77,6 @@ EMBED_MODEL = os.environ.get("MEMORY_EMBED_MODEL", "qwen3-embedding:0.6b")
 # in context-memory-architecture.md).
 RETRIEVAL_THRESHOLD = 0.50  # cosine similarity floor for search_segments()
 
-# Serializes read-modify-write on the index file. Without it, two flushes
-# racing can both read the pre-append state and the second write silently
-# drops the first entry — the segment stays on disk but becomes invisible
-# to search_segments(), which is exactly the silent loss this module exists
-# to prevent. In-process only: a second OS process writing the same index
-# would need fcntl.flock instead. Today the only writer is the agent loop,
-# so this is sufficient.
 _INDEX_LOCK = threading.Lock()
 
 
@@ -110,6 +103,31 @@ def ensure_dirs() -> None:
 # Atomic disk writes — the actual "never lose it" mechanism
 # ---------------------------------------------------------------------------
 
+def _fsync_dir(directory: Path) -> None:
+    """Flush the directory entry itself, so the rename survives a power loss.
+
+    os.replace() guarantees nobody ever observes a half-written file, but on
+    its own it does not guarantee the rename itself has reached the platter —
+    after an unclean shutdown the directory can still show the pre-rename
+    state. For a module whose entire premise is "if it is not written to a
+    file, it does not exist", that gap matters.
+
+    Best-effort by design: directory fds are a POSIX notion and this is not
+    available everywhere (notably Windows), so a failure here is not worth
+    failing the write over — the data itself is already safely renamed.
+    """
+    try:
+        fd = os.open(directory, os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
+
 def _atomic_write_json(path: Path, data: Any) -> None:
     """Write JSON atomically: temp file + os.replace(), so a crash mid-write
     can never leave a corrupted or half-written file at `path`."""
@@ -121,6 +139,7 @@ def _atomic_write_json(path: Path, data: Any) -> None:
             f.flush()
             os.fsync(f.fileno())
         os.replace(tmp_path, path)  # atomic on POSIX and Windows
+        _fsync_dir(path.parent)
     finally:
         if tmp_path.exists():
             tmp_path.unlink(missing_ok=True)
@@ -313,3 +332,4 @@ def load_segment(segment_id: str) -> dict:
     if not path.exists():
         raise FileNotFoundError(f"No such segment: {segment_id}")
     return json.loads(path.read_text(encoding="utf-8"))
+
