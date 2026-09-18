@@ -4,6 +4,12 @@ Core idea: **separate what the model is actively thinking about (hot context)
 from what it knows long-term (cold, searchable memory).** Never let the
 two blur into one giant, ever-growing prompt.
 
+> **A note on language**: anchor phrases and example user messages
+> throughout this document are in Romanian — that's the language this
+> agent is actually operated in, so the detector has to match real input,
+> not a translation of it. All surrounding documentation, code, and
+> comments are in English.
+
 Three subsystems, working together:
 1. Topic-change detector (runs before every message reaches the big model)
 2. Incremental flush (writes finished segments to disk immediately, not at night)
