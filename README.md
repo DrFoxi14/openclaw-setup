@@ -17,6 +17,7 @@ So this isn't "local AI because it's trendy" — it's local AI because it was th
 - **`gog`** — Google OAuth CLI for Gmail/Calendar/Drive/Docs/Sheets access
 - **Browser control layer** — CDP-based (Chromium only: Chrome/Brave, not Safari)
 - **Memory-core plugin** — persistent memory with a "dreaming" consolidation process (light/REM/deep cycles), scheduled for 3 AM only
+- **Context & memory layer** (`src/`) — a topic-change detector and incremental disk-flush built on top of memory-core, so a finished topic is written to disk the moment it ends rather than waiting for the nightly pass. Design: [`docs/context-memory-architecture.md`](docs/context-memory-architecture.md). Why it exists: [`docs/failure-simulation-openclaw-ornith.md`](docs/failure-simulation-openclaw-ornith.md).
 - **Heartbeat** — periodic background check
 - **Scheduled jobs**: email triage (automatic inbox check/sort), plus the nightly dreaming cycle
 
@@ -25,6 +26,25 @@ So this isn't "local AI because it's trendy" — it's local AI because it was th
 - **Local model, zero API cost** — this was the central decision everything else derives from. No budget for ongoing per-token costs, so the model had to run entirely on owned hardware, not a subscription.
 - **`gog` with a restricted scope** (`gmail,calendar,docs,drive,contacts,sheets`) instead of accepting the CLI's default broad OAuth request (which included AdWords, Classroom, Photos, YouTube — none of it needed).
 - **`dreaming.frequency` fixed to `03:00 Europe/Bucharest`** with `verboseLogging: false`, so memory consolidation runs only at night and never leaks its internal output into live chat.
+
+## What's in this repo
+
+| Path | What it is |
+|---|---|
+| `docs/SETUP.md` | Step-by-step reproduction of this install, written live during the rebuild |
+| `docs/TROUBLESHOOTING.md` | Postmortems of the incidents that shaped the config |
+| `docs/AGENT_RULES.md` | Behavior rules given to the agent, each traced to a real failure |
+| `docs/context-memory-architecture.md` | Design for topic detection, incremental flush, and retrieval |
+| `docs/failure-simulation-openclaw-ornith.md` | How this stack degrades over hours/days, and what that implies for build order |
+| `src/memory_flush.py` | Incremental disk-flush with atomic writes and semantic search |
+| `src/topic_reset_trigger.py` | Layer A of the topic detector — embedding-only, no LLM call |
+| `src/cache.py` | Thread-safe TTL + LRU cache |
+| `tools/artifact_manager.py` | Local artifact versioning: save, run, serve, roll back |
+| `tools/calibrate_*.py`, `tools/compare_embed_models.py` | Threshold and embedding-model calibration — measured, not guessed |
+| `config/openclaw.example.json` | Secrets-redacted example config |
+| `task_app/` | Small vanilla-JS task tracker |
+
+43 tests pass across `src/` — see [`docs/SETUP.md`](docs/SETUP.md#running-the-tests).
 
 ## What broke, and what I learned
 
@@ -36,7 +56,6 @@ This project has gone through at least two full rebuilds. Rather than hide that,
 
 ## Setup
 
-<!-- Trimite spre docs/SETUP.md, nu duplica aici -->
 See [`docs/SETUP.md`](docs/SETUP.md) for how to reproduce this from scratch.
 
 ## Stack
@@ -49,7 +68,14 @@ See [`docs/SETUP.md`](docs/SETUP.md) for how to reproduce this from scratch.
 
 ## Status
 
-This repo is a work in progress: I'm rebuilding the whole setup from scratch (v0 → v1), moving away from an unstructured, undocumented install toward something versioned and properly documented as I go, instead of writing it all up after the fact.
+Rebuilt from scratch (v0 → v1) in September 2026, documented as it happened
+rather than written up afterward. The gateway runs locally with fully local
+inference and embeddings; secrets are out of plaintext; memory search was
+caught defaulting to a cloud provider and corrected before any data left the
+machine (see [`docs/SETUP.md`](docs/SETUP.md)).
+
+Still open: Telegram channel re-enable, `gog` OAuth with minimal scope,
+scheduled backups, and wiring the `src/` memory layer into the live agent loop.
 
 ---
 
