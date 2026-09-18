@@ -226,3 +226,36 @@ Both `gateway.auth.token` and `models.providers.ollama.apiKey` are now
 SecretRefs backed by the local SQLite secret store (`kind: secret`,
 write-only — never exposed via list/get, only resolved internally at
 runtime).
+
+
+## Running the tests
+
+The Python modules in `src/` have a pytest suite. They depend on nothing
+outside the standard library, but pytest itself lives in a project-local
+virtual environment rather than the system Python.
+
+```bash
+cd ~/Projects/openclaw-setup
+python3 -m venv .venv
+source .venv/bin/activate
+pip install pytest
+```
+
+`.venv/` is gitignored — it never leaves this machine.
+
+Run the suite:
+
+```bash
+PYTHONPATH=src python3 -m pytest src/ -q
+```
+
+`PYTHONPATH=src` is required: the tests import `memory_flush` and
+`topic_reset_trigger` as top-level modules, not as a package.
+
+> **Every new shell needs the environment activated again** —
+> `source .venv/bin/activate`. Without it the commands above run against
+> the system Python, which has no pytest, and the failure reads as a
+> missing-module error rather than "you forgot to activate." If the
+> prompt doesn't show `(.venv)`, the tests are not running.
+
+Expected: 43 passed (9 cache, 21 memory flush, 13 topic reset trigger).
