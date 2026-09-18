@@ -73,7 +73,11 @@ After saving with `--lang html`:
 ```
 python3 <path-to-tools>/artifact_manager.py serve <artifact-name>
 ```
-This returns a `127.0.0.1`-only local URL. It auto-refreshes when the artifact is re-saved under the same name. **Never expose this via ngrok or any public tunnel** — it's local-only, by design.
+This returns a `127.0.0.1`-only local URL. It auto-refreshes when the artifact is re-saved under the same name. This is the default and covers almost every case.
+
+A public tunnel exists (`artifact_manager.py tunnel`) but is **never automatic**. It requires an explicit command from me, is protected by a generated password, and expires on its own after a set number of minutes even if I forget to stop it. The agent must never open one on its own initiative — not to "make sharing easier," not because a preview seems useful on another device.
+
+> **Why this rule changed**: the original version of this rule said "never expose this via any public tunnel — ever." That was written before `artifact_manager.py` had a tunnel command at all, when the only options would have been ad-hoc ngrok with no password and no expiry. The current implementation generates a per-artifact password, enforces Basic Auth on every request while the tunnel is up, and spawns a detached watchdog that kills it at expiry regardless of what else happens. The rule now constrains *who initiates* a tunnel rather than banning the capability.
 
 **Rule 4 — Edits update the same artifact**
 A follow-up change ("make it blue", "add a column") edits and re-saves under the same name — it never creates a new artifact.
@@ -93,7 +97,7 @@ Not mandatory after every artifact, but avoids leaving dozens of local servers r
 
 **What this is meant to prevent:**
 - No raw code dumped into chat when a saved artifact already exists for it.
-- No public tunnels (ngrok, cloudflared, etc.) for local artifacts — ever.
+- No public tunnel opened without an explicit request from me — the `tunnel` command exists, but the agent never reaches for it on its own.
 - No claiming a script "works" without having actually run it and seen exit code 0.
 
 ## Self-modification of openclaw.json (2026-09-17)
