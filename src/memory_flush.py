@@ -43,6 +43,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 import urllib.request
 import urllib.error
@@ -75,6 +76,15 @@ EMBED_MODEL = os.environ.get("MEMORY_EMBED_MODEL", "qwen3-embedding:0.6b")
 # you have real conversation segments (per the "open tuning questions"
 # in context-memory-architecture.md).
 RETRIEVAL_THRESHOLD = 0.50  # cosine similarity floor for search_segments()
+
+# Serializes read-modify-write on the index file. Without it, two flushes
+# racing can both read the pre-append state and the second write silently
+# drops the first entry — the segment stays on disk but becomes invisible
+# to search_segments(), which is exactly the silent loss this module exists
+# to prevent. In-process only: a second OS process writing the same index
+# would need fcntl.flock instead. Today the only writer is the agent loop,
+# so this is sufficient.
+_INDEX_LOCK = threading.Lock()
 
 
 # ---------------------------------------------------------------------------
@@ -250,14 +260,15 @@ def flush_segment(
 
 def _update_index(segment_id: str, vector: list[float], summary: str, topic_tags: list[str]) -> None:
     ensure_dirs()
-    index = json.loads(INDEX_PATH.read_text(encoding="utf-8"))
-    index["entries"].append({
-        "id": segment_id,
-        "embedding": vector,
-        "summary": summary,
-        "topic_tags": topic_tags,
-    })
-    _atomic_write_json(INDEX_PATH, index)
+    with _INDEX_LOCK:
+        index = json.loads(INDEX_PATH.read_text(encoding="utf-8"))
+        index["entries"].append({
+            "id": segment_id,
+            "embedding": vector,
+            "summary": summary,
+            "topic_tags": topic_tags,
+        })
+        _atomic_write_json(INDEX_PATH, index)
 
 
 @dataclass
